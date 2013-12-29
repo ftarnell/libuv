@@ -206,6 +206,9 @@ static void uv__udp_recvmsg(uv_loop_t* loop,
        * without reading it, and avoid allocating a buffer.
        */
 
+      buf.base = NULL;
+      buf.len = 0;
+
       /* Attempt to read the packet. */
       do {
         nread = read(handle->io_watcher.fd, &fake_buffer, 1);
