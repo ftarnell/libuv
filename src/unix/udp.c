@@ -22,6 +22,8 @@
 #include "uv.h"
 #include "internal.h"
 
+#include <sys/ioctl.h>
+
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
@@ -188,7 +190,24 @@ static void uv__udp_recvmsg(uv_loop_t* loop,
   h.msg_name = &peer;
 
   do {
-    handle->alloc_cb((uv_handle_t*) handle, 64 * 1024, &buf);
+    int next_size;
+
+    if (ioctl(handle->io_watcher.fd, FIONREAD, &next_size) == -1)
+      break;
+
+    if (next_size == 0)
+      /*
+       * FIONREAD returning zero can mean two things: either no packet
+       * is pending, or the packet has a size of zero.  Unfortunately
+       * there's no way to distinguish the two cases.  Ideally, if no
+       * packet is queued, we would simply break here rather than
+       * allocating a buffer and freeing it again when recv() indicates
+       * there's no packet to read.
+       */
+      handle->alloc_cb((uv_handle_t*) handle, 64 * 1024, &buf);
+    else
+      handle->alloc_cb((uv_handle_t*) handle, next_size, &buf);
+
     if (buf.len == 0) {
       handle->recv_cb(handle, UV_ENOBUFS, &buf, NULL, 0);
       return;
