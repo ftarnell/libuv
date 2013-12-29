@@ -243,7 +243,7 @@ static void uv__udp_recvmsg(uv_loop_t* loop,
       else
         handle->recv_cb(handle, -errno, &buf, NULL, 0);
     }
-    else {
+    else if (next_size > 0) {
       flags = 0;
 
       if (h.msg_flags & MSG_TRUNC)
